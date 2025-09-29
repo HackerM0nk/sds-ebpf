@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # SDS eBPF Observer Agent
+  observer:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    container_name: sds-observer
+    privileged: true
+    pid: host
+    network_mode: host
+    volumes:
+      # Mount kernel debug filesystem (required for eBPF)
+      - /sys/kernel/debug:/sys/kernel/debug:ro
+      - /sys/fs/bpf:/sys/fs/bpf
+      # Output directory for collected events
+      - ./output:/var/log/sds-observer
+      # Optional: Container runtime socket for metadata
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - SAMPLING_ON=60
+      - SAMPLING_OFF=240
+      - OUTPUT_DIR=/var/log/sds-observer
+    command: ["--output", "/var/log/sds-observer", "--verbose", "--sampling-on", "60", "--sampling-off", "240"]
+    restart: unless-stopped
+
+  # Optional: Sample workload generator for testing
+  workload-generator:
+    image: alpine:latest
+    container_name: sds-workload-generator
+    command: >
+      sh -c "
+      while true; do
+        echo 'Generating sample workload...'
+        wget -q -O- https://example.com > /dev/null 2>&1
+        sleep 10
+      done
+      "
+    restart: unless-stopped
+    depends_on:
+      - observer

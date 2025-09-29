@@ -1,0 +1,42 @@
+%% Phase 1: Sparse Sampling Cycle
+%% Shows the timing and flow of the 60s ON / 4min OFF sampling pattern
+
+sequenceDiagram
+    participant Agent as SDS Observer Agent
+    participant eBPF as eBPF Programs
+    participant Kernel as Linux Kernel
+    participant FS as Filesystem
+
+    Note over Agent: Agent Starts
+
+    loop Every 5 Minutes (300s)
+        Note over Agent: SAMPLING ON (60s)
+
+        Agent->>eBPF: Load & Attach Programs
+        eBPF->>Kernel: Hook Tracepoints/Kprobes
+        activate eBPF
+
+        Note over Agent,FS: Collection Window: 60 seconds
+
+        loop Collection Period
+            Kernel->>eBPF: Trigger on Events
+            eBPF->>Agent: Submit via Ring Buffer
+            Agent->>Agent: Parse & Enrich Event
+            Agent->>FS: Write JSON Event
+        end
+
+        Note over Agent: After 60s: Stop Collection
+
+        Agent->>eBPF: Detach Programs
+        deactivate eBPF
+        eBPF->>Kernel: Unhook
+
+        Note over Agent,FS: Sampling Complete<br/>events_20240101_120000.json created
+
+        Note over Agent: SAMPLING OFF (240s)
+        Note over Agent: Sleep / Low Resource Usage
+
+        Note over Agent: Wait 4 minutes...
+    end
+
+    Note over Agent: Cycle Repeats

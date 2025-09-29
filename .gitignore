@@ -1,0 +1,48 @@
+# Build artifacts
+bin/
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.test
+
+# eBPF artifacts
+*.bpf.o
+agent/ebpf/*.generated
+
+# Go artifacts
+vendor/
+go.sum
+
+# Output files
+output/
+*.json
+/var/log/sds-observer/
+/tmp/sds-observer/
+
+# Docker volumes
+docker/output/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# Generated diagrams
+diagrams/*.png
+diagrams/*.svg
+diagrams/*.pdf
+
+# Temporary files
+tmp/
+temp/
+
+# OS specific
+Thumbs.db
