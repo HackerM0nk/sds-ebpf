@@ -1,0 +1,126 @@
+# Phase 1: Baseline eBPF Agent Architecture
+# Sparse sampling system telemetry collector
+
+direction: down
+
+kernel: Linux Kernel Space {
+  style.fill: "#e3f2fd"
+
+  kprobes: Kernel Probes & Tracepoints {
+    shape: cylinder
+  }
+
+  ebpf: eBPF Programs {
+    style.fill: "#4CAF50"
+
+    exec: Process Exec/Exit Monitor {
+      shape: hexagon
+    }
+
+    syscall: Syscall Tracer {
+      shape: hexagon
+    }
+
+    tcp: TCP Connect Monitor {
+      shape: hexagon
+    }
+
+    container: Container Metadata {
+      shape: hexagon
+    }
+  }
+
+  ringbuf: Ring Buffer\n256KB {
+    shape: queue
+    style.fill: "#2196F3"
+  }
+
+  kprobes -> ebpf.exec: attach
+  kprobes -> ebpf.syscall: attach
+  kprobes -> ebpf.tcp: attach
+  kprobes -> ebpf.container: attach
+
+  ebpf.exec -> ringbuf: submit events
+  ebpf.syscall -> ringbuf: submit events
+  ebpf.tcp -> ringbuf: submit events
+  ebpf.container -> ringbuf: submit events
+}
+
+userspace: User Space - Go Collector {
+  style.fill: "#fff3e0"
+
+  loader: Loader\nlibbpf/cilium-ebpf {
+    shape: rectangle
+  }
+
+  consumer: Event Consumer\nRing Buffer Reader {
+    shape: rectangle
+  }
+
+  sampler: Sparse Sampling\nController\n60s ON / 4min OFF {
+    shape: diamond
+    style.fill: "#FF9800"
+  }
+
+  processing: Event Processing {
+    parser: Event Parser
+    enricher: Metadata Enricher\nContainer/Process Context
+    serializer: JSON Serializer
+
+    parser -> enricher
+    enricher -> serializer
+  }
+
+  output: Output Handlers {
+    file: File Writer\n/var/log/sds-observer/*.json
+    http: HTTP Sender\n(Optional) {
+      style.stroke-dash: 3
+    }
+  }
+}
+
+storage: Storage {
+  style.fill: "#f3e5f5"
+
+  fs: Local Filesystem\nJSON Event Files {
+    shape: cylinder
+    style.fill: "#9C27B0"
+  }
+
+  api: HTTP Endpoint\nPhase 2 Integration {
+    shape: cloud
+    style.stroke-dash: 3
+  }
+}
+
+# Connections
+userspace.loader -> kernel.ebpf.exec: load & attach
+userspace.loader -> kernel.ebpf.syscall: load & attach
+userspace.loader -> kernel.ebpf.tcp: load & attach
+userspace.loader -> kernel.ebpf.container: load & attach
+
+kernel.ringbuf -> userspace.consumer: poll events
+userspace.consumer -> userspace.processing.parser: raw events
+
+userspace.sampler -> userspace.loader: control
+userspace.sampler -> userspace.consumer: control
+
+userspace.processing.serializer -> userspace.output.file: write
+userspace.processing.serializer -> userspace.output.http: send (optional) {
+  style.stroke-dash: 3
+}
+
+userspace.output.file -> storage.fs: persist
+userspace.output.http -> storage.api: forward {
+  style.stroke-dash: 3
+}
+
+# Legend
+legend: Legend {
+  solid: Solid Line = Core Flow {
+    style.stroke: black
+  }
+  dashed: Dashed Line = Optional/Future {
+    style.stroke-dash: 3
+  }
+}

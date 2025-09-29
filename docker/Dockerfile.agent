@@ -1,0 +1,59 @@
+# Multi-stage Dockerfile for SDS eBPF Observer
+# Stage 1: Build eBPF programs and Go binary
+
+FROM ubuntu:22.04 AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    clang \
+    llvm \
+    libbpf-dev \
+    linux-headers-generic \
+    golang-1.21 \
+    make \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Setup Go path
+ENV PATH="/usr/lib/go-1.21/bin:${PATH}"
+ENV GOPATH="/go"
+
+WORKDIR /build
+
+# Copy source code
+COPY agent/ .
+
+# Download Go dependencies
+RUN go mod download
+
+# Build eBPF programs
+RUN make build-bpf
+
+# Build Go binary
+RUN make build-go
+
+# Stage 2: Runtime image
+FROM ubuntu:22.04
+
+# Install minimal runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libbpf1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy binary from builder
+COPY --from=builder /build/bin/sds-observer /usr/local/bin/sds-observer
+
+# Create output directory
+RUN mkdir -p /var/log/sds-observer
+
+# Run as root (required for eBPF)
+USER root
+
+# Default configuration
+ENV OUTPUT_DIR=/var/log/sds-observer
+ENV SAMPLING_ON=60
+ENV SAMPLING_OFF=240
+
+ENTRYPOINT ["/usr/local/bin/sds-observer"]
+CMD ["--output", "/var/log/sds-observer", "--verbose"]

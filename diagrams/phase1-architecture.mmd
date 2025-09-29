@@ -1,0 +1,83 @@
+%% Phase 1: Baseline eBPF Agent Architecture
+%% Sparse sampling system telemetry collector
+
+graph TB
+    subgraph "Linux Kernel Space"
+        KP[Kernel Probes & Tracepoints]
+
+        subgraph "eBPF Programs"
+            EP1[Process Exec/Exit Monitor]
+            EP2[Syscall Tracer]
+            EP3[TCP Connect Monitor]
+            EP4[Container Metadata Collector]
+        end
+
+        RB[Ring Buffer<br/>256KB]
+
+        KP --> EP1
+        KP --> EP2
+        KP --> EP3
+        KP --> EP4
+
+        EP1 --> RB
+        EP2 --> RB
+        EP3 --> RB
+        EP4 --> RB
+    end
+
+    subgraph "User Space - Go Collector"
+        L[Loader<br/>libbpf / cilium-ebpf]
+        EC[Event Consumer<br/>Ring Buffer Reader]
+        SP[Sparse Sampling Controller<br/>60s ON / 4min OFF]
+
+        subgraph "Event Processing"
+            P[Event Parser]
+            E[Metadata Enricher<br/>Container/Process Context]
+            J[JSON Serializer]
+        end
+
+        subgraph "Output Handlers"
+            F[File Writer<br/>/var/log/sds-observer/*.json]
+            H[HTTP Sender<br/>Optional]
+        end
+    end
+
+    subgraph "Storage"
+        FS[Local Filesystem<br/>JSON Event Files]
+        API[HTTP Endpoint<br/>Phase 2 Integration]
+    end
+
+    L -->|Load & Attach| EP1
+    L -->|Load & Attach| EP2
+    L -->|Load & Attach| EP3
+    L -->|Load & Attach| EP4
+
+    RB -->|Poll Events| EC
+    EC --> P
+    P --> E
+    E --> J
+
+    SP -->|Controls| L
+    SP -->|Controls| EC
+
+    J --> F
+    J -.->|Optional| H
+
+    F --> FS
+    H -.-> API
+
+    style EP1 fill:#4CAF50
+    style EP2 fill:#4CAF50
+    style EP3 fill:#4CAF50
+    style EP4 fill:#4CAF50
+    style RB fill:#2196F3
+    style SP fill:#FF9800
+    style FS fill:#9C27B0
+
+    classDef kernel fill:#e3f2fd
+    classDef userspace fill:#fff3e0
+    classDef storage fill:#f3e5f5
+
+    class KP,EP1,EP2,EP3,EP4,RB kernel
+    class L,EC,SP,P,E,J,F,H userspace
+    class FS,API storage
