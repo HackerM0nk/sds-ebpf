@@ -1,4 +1,4 @@
-# SDS eBPF: Graph-based Observability & Reasoning System
+# WIP: SDS eBPF: Graph-based Observability & Reasoning System
 
 **Open-source platform for end-to-end observability and AI-powered reasoning across distributed systems.**
 
@@ -244,10 +244,20 @@ This is an open-source project. Contributions welcome!
 
 ## 📚 Documentation
 
+### Quick Start
 - **[Quick Start](docs/QUICKSTART.md)** - Get running in 5 minutes
-- **[Phase 1 Guide](docs/PHASE_1.md)** - Complete Phase 1 documentation
+- **[Complete Guide](docs/COMPLETE_GUIDE.md)** - Full platform documentation with use cases
+
+### Technical Documentation
+- **[Phase 1 Guide](docs/PHASE_1.md)** - eBPF agent implementation details
 - **[macOS Development](docs/LOCAL_DEV_macOS.md)** - Local setup on macOS
-- **[Architecture Diagrams](diagrams/)** - Visual system design
+- **[Phase 1 Summary](docs/PHASE_1_SUMMARY.md)** - Implementation summary
+
+### Architecture & Diagrams
+- **[Diagrams Guide](docs/DIAGRAMS.md)** - All Excalidraw architecture diagrams
+- **[Instrumentation Overview](diagrams/01-instrumentation-overview.excalidraw)** - How we instrument different environments
+- **[End-to-End Pipeline](diagrams/end-to-end-pipeline.excalidraw)** - Complete data flow
+- **[Phase 2 Architecture](diagrams/phase2-aggregation-architecture.excalidraw)** - Aggregation & storage layer
 
 ---
 
