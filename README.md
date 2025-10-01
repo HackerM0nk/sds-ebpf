@@ -24,7 +24,7 @@ Build a complete observability platform that:
 
 ## 🏗️ Architecture Overview
 
-![Uploading image.png…]()
+<img width="2088" height="1030" alt="image" src="https://github.com/user-attachments/assets/b929abf4-fdaf-4fa7-8887-6bced3233d32" />
 
 
 ---
