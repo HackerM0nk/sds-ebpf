@@ -1,6 +1,6 @@
 # WIP: SDS eBPF: Graph-based Observability & Reasoning System
 
-**Open-source platform for end-to-end observability and AI-powered reasoning across distributed systems.**
+**Open-source platform for end-to-end observability and AI-powered reasoning across distributed systems**
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![eBPF](https://img.shields.io/badge/powered%20by-eBPF-orange.svg)](https://ebpf.io/)
