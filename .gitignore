@@ -1,5 +1,6 @@
 # Build artifacts
 bin/
+agent/observer
 *.o
 *.a
 *.so
@@ -13,16 +14,17 @@ agent/ebpf/*.generated
 
 # Go artifacts
 vendor/
-go.sum
 
 # Output files
 output/
-*.json
 /var/log/sds-observer/
 /tmp/sds-observer/
+eval/output/
+eval/workloads/*/output/
 
 # Docker volumes
 docker/output/
+docker/output-live*/
 
 # IDE / Editor
 .vscode/

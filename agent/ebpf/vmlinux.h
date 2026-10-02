@@ -12,6 +12,9 @@ typedef unsigned char __u8;
 typedef unsigned short __u16;
 typedef unsigned int __u32;
 typedef unsigned long long __u64;
+typedef signed short __s16;
+typedef signed int __s32;
+typedef signed long long __s64;
 
 typedef signed char s8;
 typedef signed short s16;
@@ -22,6 +25,25 @@ typedef __u8 u8;
 typedef __u16 u16;
 typedef __u32 u32;
 typedef __u64 u64;
+typedef __u16 __le16;
+typedef __u16 __be16;
+typedef __u32 __be32;
+typedef __u64 __be64;
+typedef __u32 __wsum;
+
+enum bpf_map_type {
+    BPF_MAP_TYPE_UNSPEC = 0,
+    BPF_MAP_TYPE_HASH = 1,
+    BPF_MAP_TYPE_ARRAY = 2,
+    BPF_MAP_TYPE_RINGBUF = 27,
+};
+
+enum {
+    BPF_ANY = 0,
+    BPF_NOEXIST = 1,
+    BPF_EXIST = 2,
+    BPF_F_LOCK = 4,
+};
 
 // Minimal kernel structures needed for our eBPF programs
 // In production, use full vmlinux.h generated from target kernel
@@ -75,6 +97,12 @@ struct trace_event_raw_sched_process_template {
 
 struct bpf_raw_tracepoint_args {
     u64 args[6];
+};
+
+struct user_pt_regs {
+    u64 regs[31];
+    u64 sp;
+    u64 pc;
 };
 
 #endif /* __VMLINUX_H__ */

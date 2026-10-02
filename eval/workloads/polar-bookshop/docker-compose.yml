@@ -1,0 +1,103 @@
+services:
+  config-service:
+    image: python:3.12-alpine
+    command: python /srv/config-server/config_server.py
+    volumes:
+      - ./config-server:/srv/config-server:ro
+
+  catalog-service:
+    image: ghcr.io/polarbookshop/catalog-service:latest
+    depends_on:
+      - config-service
+      - polar-keycloak
+      - polar-postgres
+    ports:
+      - "${POLAR_CATALOG_HOST_PORT:-19001}:9001"
+    environment:
+      BPL_JVM_THREAD_COUNT: "${POLAR_JVM_THREAD_COUNT:-20}"
+      JAVA_TOOL_OPTIONS: "${POLAR_JAVA_TOOL_OPTIONS:--XX:ReservedCodeCacheSize=64M -Xss512k -Xms48m -Xmx192m}"
+      SPRING_CLOUD_CONFIG_URI: http://config-service:8888
+      SPRING_DATASOURCE_URL: jdbc:postgresql://polar-postgres:5432/polardb_catalog
+      SPRING_PROFILES_ACTIVE: testdata
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://polar-keycloak:8080/realms/PolarBookshop
+
+  order-service:
+    image: ghcr.io/polarbookshop/order-service:latest
+    depends_on:
+      - config-service
+      - polar-keycloak
+      - polar-postgres
+      - polar-rabbitmq
+      - catalog-service
+    ports:
+      - "${POLAR_ORDER_HOST_PORT:-19002}:9002"
+    environment:
+      BPL_JVM_THREAD_COUNT: "${POLAR_JVM_THREAD_COUNT:-20}"
+      JAVA_TOOL_OPTIONS: "${POLAR_JAVA_TOOL_OPTIONS:--XX:ReservedCodeCacheSize=64M -Xss512k -Xms48m -Xmx192m}"
+      POLAR_CATALOG_SERVICE_URI: http://catalog-service:9001
+      SPRING_CLOUD_CONFIG_URI: http://config-service:8888
+      SPRING_R2DBC_URL: r2dbc:postgresql://polar-postgres:5432/polardb_order
+      SPRING_FLYWAY_URL: jdbc:postgresql://polar-postgres:5432/polardb_order
+      SPRING_RABBITMQ_HOST: polar-rabbitmq
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://polar-keycloak:8080/realms/PolarBookshop
+
+  dispatcher-service:
+    image: ghcr.io/polarbookshop/dispatcher-service:latest
+    depends_on:
+      - config-service
+      - polar-rabbitmq
+    environment:
+      BPL_JVM_THREAD_COUNT: "${POLAR_JVM_THREAD_COUNT:-20}"
+      JAVA_TOOL_OPTIONS: "${POLAR_JAVA_TOOL_OPTIONS:--XX:ReservedCodeCacheSize=64M -Xss512k -Xms48m -Xmx192m}"
+      SPRING_CLOUD_CONFIG_URI: http://config-service:8888
+      SPRING_RABBITMQ_HOST: polar-rabbitmq
+
+  edge-service:
+    image: ghcr.io/polarbookshop/edge-service:latest
+    depends_on:
+      - config-service
+      - polar-keycloak
+      - polar-redis
+      - catalog-service
+      - order-service
+      - polar-ui
+    ports:
+      - "${POLAR_EDGE_HOST_PORT:-19000}:9000"
+    environment:
+      BPL_JVM_THREAD_COUNT: "${POLAR_JVM_THREAD_COUNT:-20}"
+      JAVA_TOOL_OPTIONS: "${POLAR_JAVA_TOOL_OPTIONS:--XX:ReservedCodeCacheSize=64M -Xss512k -Xms48m -Xmx192m}"
+      CATALOG_SERVICE_URL: http://catalog-service:9001
+      ORDER_SERVICE_URL: http://order-service:9002
+      SPA_URL: http://polar-ui:9004
+      SPRING_CLOUD_CONFIG_URI: http://config-service:8888
+      SPRING_REDIS_HOST: polar-redis
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI: http://polar-keycloak:8080/realms/PolarBookshop
+
+  polar-ui:
+    image: ghcr.io/polarbookshop/polar-ui:latest
+    environment:
+      PORT: "9004"
+
+  polar-postgres:
+    image: postgres:14.12
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - ./postgresql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  polar-redis:
+    image: redis:7.2
+
+  polar-rabbitmq:
+    image: rabbitmq:3.13-management
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+
+  polar-keycloak:
+    image: python:3.12-alpine
+    command: python -m http.server 8080 --directory /srv/oidc
+    ports:
+      - "${POLAR_KEYCLOAK_HOST_PORT:-18080}:8080"
+    volumes:
+      - ./oidc:/srv/oidc:ro

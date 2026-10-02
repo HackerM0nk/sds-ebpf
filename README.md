@@ -29,7 +29,55 @@ Build a complete observability platform that:
 
 ---
 
+## 🧭 Project Posture
+
+This repository is currently an **early-stage research artifact scaffold**, not a finished observability platform.
+
+**What exists today:**
+- Initial eBPF program prototypes
+- Go collector skeleton and local runtime wrapper
+- Architecture, roadmap, and research design docs
+- Docker-based local development setup
+
+**What is still missing:**
+- Real end-to-end eBPF loading and event ingestion path
+- Stable graph-building pipeline and query layer
+- Reproducible evaluation harness and benchmark results
+- Release-quality packaging for a publishable artifact
+
+**Build direction:**
+- [Vision](docs/VISION.md)
+- [Artifact Spec v0.1](docs/ARTIFACT_SPEC_V0_1.md)
+- [Engineering Loop](docs/ENGINEERING_LOOP.md)
+- [Execution Plan](docs/EXECUTION_PLAN.md)
+- [Roadmap](ROADMAP.md)
+- [Research Blueprint](docs/RESEARCH_BLUEPRINT.md)
+- [Novelty Map](docs/NOVELTY_MAP.md)
+- [Workload Plan](eval/WORKLOAD_PLAN.md)
+- [Polar Bookshop Demo Artifact](eval/workloads/polar-bookshop/README.md)
+
+---
+
 ## 🚀 Quick Start
+
+### First Demo Artifact
+
+The fastest way to exercise SDS as an artifact, not just a prototype collector, is the first workload-backed demo:
+
+```bash
+make polar-demo
+```
+
+That path:
+- starts a bounded observer capture,
+- runs the Polar Bookshop microservice stack,
+- drives a deterministic traffic scenario,
+- builds a namespace-filtered runtime graph,
+- and evaluates the inferred dependencies against workload-specific ground truth.
+
+See [Polar Bookshop Demo Artifact](eval/workloads/polar-bookshop/README.md) for details.
+
+**Note:** The current quick-start path is for the prototype scaffold and is expected to evolve during Milestone 0 and Milestone 1 hardening.
 
 ### Prerequisites (macOS)
 
@@ -50,7 +98,7 @@ cd docker && docker-compose up
 ### Verify
 
 ```bash
-tail -f docker/output/events_*.json | jq .
+tail -f docker/output/events_*.ndjson | jq .
 ```
 
 **See full instructions:** [Quick Start Guide](docs/QUICKSTART.md)
@@ -59,26 +107,24 @@ tail -f docker/output/events_*.json | jq .
 
 ## 📦 Current Status
 
-### ✅ Phase 1: Baseline eBPF Agent (COMPLETE)
+### 🧪 Prototype Scaffold (CURRENT)
 
-**What's Built:**
-- Sparse-sampling eBPF agent (60s on / 4min off)
-- Monitors: processes, syscalls, network connections, containers
-- User-space collector in Go
-- JSON event output
-- Docker setup for local macOS development
+**Implemented in some form:**
+- Draft eBPF programs for process, syscall, and TCP visibility
+- Go-based collector and sparse-sampling control loop
+- NDJSON output path and Docker-based local development setup
+- Broad system design docs and diagrams for the full platform
 
-**Documentation:**
-- [Phase 1 Details](docs/PHASE_1.md)
-- [macOS Local Development](docs/LOCAL_DEV_macOS.md)
-- [Architecture Diagrams](diagrams/)
+**Not yet artifact-grade:**
+- Real bpf2go-based loader and attach flow
+- Stable event schema with provenance and versioning
+- Graph construction pipeline from runtime events
+- Reproducible benchmarks, tests, and release process
 
-**Try it:**
-```bash
-cd agent
-make build
-sudo ./bin/sds-observer --output /tmp/sds-observer --verbose
-```
+**Use this repo as:**
+- A foundation for a serious systems artifact
+- The implementation base for a research paper
+- A staged GitHub project with milestones rather than a finished product
 
 ---
 
@@ -106,52 +152,41 @@ sudo ./bin/sds-observer --output /tmp/sds-observer --verbose
 
 ```
 sds-ebpf/
-├── agent/                  # eBPF agent (C + Go)
-│   ├── ebpf/               # eBPF programs (C)
-│   │   ├── observer.bpf.c  # Main eBPF program
-│   │   └── vmlinux.h       # Kernel type definitions
+├── .github/workflows/      # CI for the research loop
+├── agent/                  # eBPF agent prototype (C + Go)
+│   ├── ebpf/               # eBPF programs and kernel type stubs
 │   ├── cmd/observer/       # Go entry point
-│   ├── pkg/                # Go packages
-│   │   ├── collector/      # Event collection & parsing
-│   │   └── config/         # Configuration
-│   ├── Makefile            # Build system
-│   └── go.mod              # Go dependencies
-│
-├── collector/              # (Phase 2) OTel collector configs
-├── storage/                # (Phase 2) Database schemas
-├── ml/                     # (Phase 3) RAG & LLM scripts
-├── diagrams/               # Architecture diagrams
-│   ├── phase1-architecture.mmd       # Mermaid
-│   ├── phase1-architecture.d2        # D2
-│   └── phase1-sparse-sampling.mmd    # Sequence diagram
-│
-├── docs/                   # Documentation
-│   ├── PHASE_1.md          # Phase 1 complete guide
-│   ├── LOCAL_DEV_macOS.md  # macOS development
-│   └── QUICKSTART.md       # Quick start
-│
-└── docker/                 # Docker & docker-compose
-    ├── Dockerfile.agent    # Agent container
-    └── docker-compose.yml  # Local testing setup
+│   ├── pkg/                # Collector and config packages
+│   ├── Makefile            # Build targets
+│   └── go.mod              # Go module definition
+├── diagrams/               # Architecture and pipeline diagrams
+├── docker/                 # Local container setup
+├── docs/                   # Vision, blueprint, spec, and workflow docs
+├── eval/                   # Sample traces, ground truth, and eval outputs
+├── prompts/                # Planning prompts for later phases
+├── schema/                 # Canonical event and graph model contracts
+├── scripts/                # Validation, graph build, and eval automation
+├── Makefile                # Root engineering loop targets
+└── ROADMAP.md              # Artifact and GitHub project roadmap
 ```
 
 ---
 
 ## 🧩 Key Features
 
-### Phase 1 Features
+### Current Prototype Features
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **Sparse Sampling** | ✅ | Collect for 60s every 5min (configurable) |
-| **Process Monitoring** | ✅ | Exec, exit, PID, PPID, UID, GID |
-| **Syscall Tracing** | ✅ | Sample key syscalls with duration |
-| **Network Monitoring** | ✅ | TCP connections with src/dst IP:port |
-| **Container Awareness** | ✅ | Cgroup IDs for correlation |
-| **JSON Output** | ✅ | Structured events to files |
-| **HTTP Export** | ✅ | Optional endpoint for streaming (prep for Phase 2) |
-| **Docker Support** | ✅ | Local testing on macOS via Colima/Docker Desktop |
-| **CO-RE** | ✅ | Portable across kernel versions (using cilium/ebpf) |
+| **Sparse Sampling Loop** | 🧪 | Control loop exists in Go, but needs validation against real sensors |
+| **Process Monitoring** | 🧪 | Draft eBPF program exists; end-to-end ingestion path is incomplete |
+| **Syscall Tracing** | 🧪 | Prototype sensor exists; not yet artifact-grade |
+| **Network Monitoring** | 🧪 | TCP connect prototype exists in eBPF source |
+| **Container Awareness** | 🧪 | Cgroup-oriented fields are present, enrichment pipeline is missing |
+| **JSON Output** | 🧪 | NDJSON-style local output path exists in prototype form |
+| **HTTP Export** | 🚧 | Stubbed in code, not implemented end to end |
+| **Docker Support** | 🧪 | Local dev scaffolding exists, but reproducibility still needs work |
+| **CO-RE Portability** | 🚧 | Intended design target; current `vmlinux.h` path is still provisional |
 
 ---
 

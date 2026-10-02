@@ -1,0 +1,20 @@
+{
+  "schema_version": "sds.ground_truth.v1",
+  "expected_edges": [
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:api-gateway",
+      "dst": "service:auth-service"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:auth-service",
+      "dst": "service:users-db"
+    },
+    {
+      "kind": "CONNECTS_TO_EXTERNAL",
+      "src": "service:billing-worker",
+      "dst": "endpoint:api.stripe.com:443"
+    }
+  ]
+}

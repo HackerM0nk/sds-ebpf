@@ -3,9 +3,10 @@
 // Monitors: processes, syscalls, network connections, container metadata
 
 #include "vmlinux.h"
-#include <bpf/bpf_helpers.h>
-#include <bpf/bpf_tracing.h>
-#include <bpf/bpf_core_read.h>
+#include "bpf_helpers.h"
+#include "bpf_tracing.h"
+#include "bpf_core_read.h"
+#include "bpf_endian.h"
 
 #define TASK_COMM_LEN 16
 #define MAX_FILENAME_LEN 256

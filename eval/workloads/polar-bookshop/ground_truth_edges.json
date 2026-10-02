@@ -1,0 +1,76 @@
+{
+  "schema_version": "sds.ground_truth.v1",
+  "workload": "polar-bookshop",
+  "expected_edges": [
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:catalog-service",
+      "dst": "service:config-service"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:catalog-service",
+      "dst": "service:polar-keycloak"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:catalog-service",
+      "dst": "service:polar-postgres"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:dispatcher-service",
+      "dst": "service:config-service"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:dispatcher-service",
+      "dst": "service:polar-rabbitmq"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:edge-service",
+      "dst": "service:catalog-service"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:edge-service",
+      "dst": "service:config-service"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:edge-service",
+      "dst": "service:polar-keycloak"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:edge-service",
+      "dst": "service:polar-redis"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:order-service",
+      "dst": "service:catalog-service"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:order-service",
+      "dst": "service:config-service"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:order-service",
+      "dst": "service:polar-keycloak"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:order-service",
+      "dst": "service:polar-postgres"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:order-service",
+      "dst": "service:polar-rabbitmq"
+    }
+  ]
+}

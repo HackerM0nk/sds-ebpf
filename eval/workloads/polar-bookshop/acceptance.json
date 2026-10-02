@@ -1,0 +1,37 @@
+{
+  "schema_version": "sds.acceptance.v1",
+  "workload": "polar-bookshop",
+  "namespace": "sds-polar-demo",
+  "required_event_services": [
+    "catalog-service",
+    "edge-service",
+    "order-service"
+  ],
+  "required_graph_services": [
+    "catalog-service",
+    "edge-service",
+    "order-service",
+    "polar-rabbitmq"
+  ],
+  "required_edges": [
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:edge-service",
+      "dst": "service:catalog-service"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:order-service",
+      "dst": "service:catalog-service"
+    },
+    {
+      "kind": "DEPENDS_ON",
+      "src": "service:order-service",
+      "dst": "service:polar-rabbitmq"
+    }
+  ],
+  "minimums": {
+    "namespaced_event_count": 25,
+    "namespaced_network_event_count": 3
+  }
+}

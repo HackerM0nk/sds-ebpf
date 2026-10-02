@@ -2,6 +2,23 @@
 
 Get the SDS eBPF Observer running in **under 5 minutes**.
 
+## First Artifact Path
+
+If you want the first workload-backed SDS artifact rather than only the standalone observer, run:
+
+```bash
+make polar-demo
+```
+
+That demo:
+- starts a bounded observer capture with `--run-once`,
+- boots the Polar Bookshop workload,
+- generates traffic,
+- builds a runtime graph,
+- and evaluates it against workload-specific ground truth.
+
+Details: [Polar Bookshop Demo Artifact](../eval/workloads/polar-bookshop/README.md)
+
 ## For macOS Users
 
 ### Prerequisites
@@ -31,14 +48,14 @@ docker-compose up
 
 ```bash
 # In another terminal
-tail -f docker/output/events_*.json | jq .
+tail -f docker/output/events_*.ndjson | jq .
 ```
 
 You should see events like:
 
 ```json
-{"type":"process.exec","timestamp":"2024-01-01T12:00:05Z","pid":1234,...}
-{"type":"network.tcp_connect","timestamp":"2024-01-01T12:00:06Z","pid":5678,...}
+{"schema_version":"sds.event.v1","event_id":"evt-...","observed_at":"2024-01-01T12:00:05Z","process":{"pid":1234,...},"event":{"kind":"process.exec",...}}
+{"schema_version":"sds.event.v1","event_id":"evt-...","observed_at":"2024-01-01T12:00:06Z","process":{"pid":5678,...},"event":{"kind":"network.tcp_connect",...}}
 ```
 
 **Success!** 🎉 Your observer is collecting telemetry.
@@ -75,7 +92,7 @@ sudo ./bin/sds-observer --output /tmp/sds-observer --verbose
 
 ```bash
 # In another terminal
-tail -f /tmp/sds-observer/events_*.json | jq .
+tail -f /tmp/sds-observer/events_*.ndjson | jq .
 ```
 
 ---
@@ -87,7 +104,7 @@ The observer is:
 1. **Every 5 minutes:**
    - Collecting for 60 seconds
    - Monitoring: processes, syscalls, network connections, containers
-   - Writing events to JSON files
+   - Writing canonical runtime events to NDJSON files
 
 2. **Then sleeping for 4 minutes** (low overhead)
 
@@ -103,7 +120,7 @@ This "sparse sampling" approach provides observability without continuous overhe
 - 🍎 See [macOS Development Guide](LOCAL_DEV_macOS.md) for advanced setup
 - 🔍 Query your events:
   ```bash
-  cat output/events_*.json | jq -r '.type' | sort | uniq -c
+  cat output/events_*.ndjson | jq -r '.event.kind' | sort | uniq -c
   ```
 
 - 🚀 Ready for more? Proceed to **Phase 2** for data aggregation and graph building
