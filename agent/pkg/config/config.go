@@ -14,6 +14,9 @@ type Config struct {
 	// Optional HTTP endpoint to send events to
 	HTTPEndpoint string `json:"http_endpoint,omitempty"`
 
+	// Path to the compiled eBPF object file
+	BPFObjectPath string `json:"bpf_object_path,omitempty"`
+
 	// Verbose logging
 	Verbose bool `json:"verbose"`
 
@@ -33,6 +36,7 @@ func Default() *Config {
 		SamplingOn:       60,
 		SamplingOff:      240,
 		Verbose:          false,
+		BPFObjectPath:    "",
 		MonitorProcesses: true,
 		MonitorSyscalls:  true,
 		MonitorNetwork:   true,

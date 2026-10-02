@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -13,16 +14,25 @@ import (
 
 	"github.com/sds-ebpf/agent/pkg/collector"
 	"github.com/sds-ebpf/agent/pkg/config"
+	"github.com/sds-ebpf/agent/pkg/events"
+	"github.com/sds-ebpf/agent/pkg/exporter"
 )
 
 var (
-	configFile  = flag.String("config", "", "Path to configuration file")
-	outputDir   = flag.String("output", "/var/log/sds-observer", "Output directory for events")
-	samplingOn  = flag.Int("sampling-on", 60, "Sampling duration in seconds")
-	samplingOff = flag.Int("sampling-off", 240, "Sampling off duration in seconds (5 min default)")
+	configFile   = flag.String("config", "", "Path to configuration file")
+	outputDir    = flag.String("output", "/var/log/sds-observer", "Output directory for events")
+	bpfObject    = flag.String("bpf-object", "", "Path to compiled eBPF object file")
+	samplingOn   = flag.Int("sampling-on", 60, "Sampling duration in seconds")
+	samplingOff  = flag.Int("sampling-off", 240, "Sampling off duration in seconds (5 min default)")
 	httpEndpoint = flag.String("http", "", "Optional HTTP endpoint to send events")
-	verbose     = flag.Bool("verbose", false, "Verbose logging")
+	runOnce      = flag.Bool("run-once", false, "Run a single collection cycle and exit")
+	verbose      = flag.Bool("verbose", false, "Verbose logging")
 )
+
+type eventCollector interface {
+	Start(chan<- collector.Event) error
+	Stop()
+}
 
 func main() {
 	flag.Parse()
@@ -52,21 +62,36 @@ func main() {
 	}
 	defer col.Close()
 
+	builder, err := events.NewBuilder(cfg)
+	if err != nil {
+		log.Fatalf("Failed to initialize canonical event builder: %v", err)
+	}
+
+	var httpExporter exporter.EventExporter
+	if cfg.HTTPEndpoint != "" {
+		httpExporter = exporter.NewHTTPExporter(cfg.HTTPEndpoint, nil)
+	}
+
 	log.Printf("Starting SDS eBPF Observer")
 	log.Printf("Sampling: %ds ON, %ds OFF", cfg.SamplingOn, cfg.SamplingOff)
 	log.Printf("Output: %s", cfg.OutputDir)
+
+	if *runOnce {
+		runCollection(col, cfg, builder, httpExporter)
+		return
+	}
 
 	// Run sparse sampling loop
 	ticker := time.NewTicker(time.Duration(cfg.SamplingOn+cfg.SamplingOff) * time.Second)
 	defer ticker.Stop()
 
 	// Start first collection immediately
-	go runCollection(col, cfg)
+	go runCollection(col, cfg, builder, httpExporter)
 
 	for {
 		select {
 		case <-ticker.C:
-			go runCollection(col, cfg)
+			go runCollection(col, cfg, builder, httpExporter)
 		case <-stop:
 			log.Println("Shutting down...")
 			return
@@ -75,13 +100,13 @@ func main() {
 }
 
 func loadConfig() (*config.Config, error) {
-	cfg := &config.Config{
-		OutputDir:    *outputDir,
-		SamplingOn:   *samplingOn,
-		SamplingOff:  *samplingOff,
-		HTTPEndpoint: *httpEndpoint,
-		Verbose:      *verbose,
-	}
+	cfg := config.Default()
+	cfg.OutputDir = *outputDir
+	cfg.BPFObjectPath = *bpfObject
+	cfg.SamplingOn = *samplingOn
+	cfg.SamplingOff = *samplingOff
+	cfg.HTTPEndpoint = *httpEndpoint
+	cfg.Verbose = *verbose
 
 	if *configFile != "" {
 		file, err := os.ReadFile(*configFile)
@@ -96,20 +121,24 @@ func loadConfig() (*config.Config, error) {
 	return cfg, nil
 }
 
-func runCollection(col *collector.Collector, cfg *config.Config) {
+func runCollection(col eventCollector, cfg *config.Config, builder *events.Builder, httpExporter exporter.EventExporter) {
 	log.Printf("Starting collection cycle for %d seconds", cfg.SamplingOn)
 
 	// Start collecting
-	events := make(chan collector.Event, 1000)
-	go col.Start(events)
+	rawEvents := make(chan collector.Event, 1000)
+	if err := col.Start(rawEvents); err != nil {
+		log.Printf("Error starting collector: %v", err)
+		return
+	}
 
 	// Create output file with timestamp
 	timestamp := time.Now().Format("20060102_150405")
-	outputFile := filepath.Join(cfg.OutputDir, fmt.Sprintf("events_%s.json", timestamp))
+	outputFile := filepath.Join(cfg.OutputDir, fmt.Sprintf("events_%s.ndjson", timestamp))
 
 	file, err := os.Create(outputFile)
 	if err != nil {
 		log.Printf("Error creating output file: %v", err)
+		col.Stop()
 		return
 	}
 	defer file.Close()
@@ -122,19 +151,19 @@ func runCollection(col *collector.Collector, cfg *config.Config) {
 
 	for {
 		select {
-		case event := <-events:
-			if err := encoder.Encode(event); err != nil {
-				log.Printf("Error encoding event: %v", err)
+		case event := <-rawEvents:
+			canonicalEvent := builder.Build(event)
+			if err := encoder.Encode(canonicalEvent); err != nil {
+				log.Printf("Error encoding canonical event: %v", err)
 			}
 			eventCount++
 
 			if cfg.Verbose {
-				log.Printf("Event: %s [PID: %d]", event.Type, event.PID)
+				log.Printf("Event: %s [PID: %d]", canonicalEvent.Event.Kind, canonicalEvent.Process.PID)
 			}
 
-			// Optionally send to HTTP endpoint
-			if cfg.HTTPEndpoint != "" {
-				go sendToHTTP(cfg.HTTPEndpoint, event)
+			if httpExporter != nil {
+				go exportToHTTP(httpExporter, canonicalEvent)
 			}
 
 		case <-timeout:
@@ -145,9 +174,11 @@ func runCollection(col *collector.Collector, cfg *config.Config) {
 	}
 }
 
-func sendToHTTP(endpoint string, event collector.Event) {
-	// Implement HTTP posting logic here
-	// This is a placeholder for Phase 2 integration
-	_ = endpoint
-	_ = event
+func exportToHTTP(httpExporter exporter.EventExporter, event events.CanonicalEvent) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := httpExporter.Export(ctx, event); err != nil {
+		log.Printf("Error exporting event to HTTP: %v", err)
+	}
 }

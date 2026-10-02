@@ -1,8 +1,9 @@
 # Makefile for SDS eBPF Observer Agent
 
 # Variables
-CLANG ?= clang
-LLVM_STRIP ?= llvm-strip
+HOMEBREW_LLVM_PREFIX := $(shell brew --prefix llvm 2>/dev/null)
+CLANG ?= $(if $(wildcard $(HOMEBREW_LLVM_PREFIX)/bin/clang),$(HOMEBREW_LLVM_PREFIX)/bin/clang,clang)
+LLVM_STRIP ?= $(if $(wildcard $(HOMEBREW_LLVM_PREFIX)/bin/llvm-strip),$(HOMEBREW_LLVM_PREFIX)/bin/llvm-strip,llvm-strip)
 BPFTOOL ?= bpftool
 GO ?= go
 
@@ -11,12 +12,13 @@ VMLINUX := ebpf/vmlinux.h
 BPF_OBJ := ebpf/observer.bpf.o
 BPF_SRC := ebpf/observer.bpf.c
 GO_SRC := $(shell find . -type f -name '*.go')
+EBPF_MOD_DIR := $(shell $(GO) list -m -f '{{.Dir}}' github.com/cilium/ebpf 2>/dev/null)
 
 OUTPUT_DIR := bin
 BINARY := $(OUTPUT_DIR)/sds-observer
 
 # Compiler flags
-INCLUDES := -I./ebpf -I/usr/include
+INCLUDES := -I./ebpf -I$(EBPF_MOD_DIR)/examples/headers -I$(EBPF_MOD_DIR)/btf/testdata -I/usr/include
 CFLAGS := -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES)
 
 .PHONY: all clean build-bpf build-go build docker-build test help
@@ -43,7 +45,7 @@ build-bpf: ## Build eBPF programs
 	$(LLVM_STRIP) -g $(BPF_OBJ)
 	@echo "eBPF object: $(BPF_OBJ)"
 
-build-go: ## Build Go binary (with embedded eBPF)
+build-go: ## Build Go binary
 	@echo "Building Go binary..."
 	@mkdir -p $(OUTPUT_DIR)
 	cd cmd/observer && $(GO) build -o ../../$(BINARY) .
